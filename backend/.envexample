@@ -1,0 +1,4 @@
+GOOGLE_API_KEY=your_google_api_key_here
+SEARCH_ENGINE_ID=your_search_engine_id_here
+PYTHON_PATH=python
+PORT=5000

@@ -1,0 +1,10 @@
+sentence-transformers
+requests
+pdfplumber
+python-dotenv
+scikit-learn
+numpy
+tf-keras
+ddgs
+beautifulsoup4
+lxml
