@@ -1,3 +1,6 @@
+app.get("/", (req, res) => {
+    res.send("Research Plagiarism Backend is Running 🚀");
+});
 const express = require('express');
 const multer = require('multer');
 const cors = require('cors');
