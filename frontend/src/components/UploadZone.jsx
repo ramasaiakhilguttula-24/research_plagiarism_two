@@ -6,7 +6,8 @@ import axios from 'axios'
 import { cn } from '../lib/utils'
 import toast from 'react-hot-toast'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+// ✅ Production-safe API base
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
 export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnalysisError, isAnalyzing }) {
     const [uploadProgress, setUploadProgress] = useState(0);
@@ -15,28 +16,37 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
         const file = acceptedFiles[0];
         if (!file) return;
 
-        if (file.type !== 'application/pdf' && file.type !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        if (
+            file.type !== 'application/pdf' &&
+            file.type !== 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        ) {
             toast.error('Please upload a PDF or DOCX file.');
+            return;
+        }
+
+        if (!API_BASE_URL) {
+            toast.error("API URL not configured.");
             return;
         }
 
         onAnalysisStart();
         setUploadProgress(10);
 
-        // Create form data
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-            // Simulate progress
             const interval = setInterval(() => {
                 setUploadProgress(prev => Math.min(prev + 5, 90));
             }, 500);
 
-            // Call backend
-            const response = await axios.post(`${API_BASE_URL}/api/scan`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const response = await axios.post(
+                `${API_BASE_URL}/api/scan`,
+                formData,
+                {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                }
+            );
 
             clearInterval(interval);
             setUploadProgress(100);
@@ -47,14 +57,18 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
 
         } catch (error) {
             console.error(error);
-            const errorMsg = error.response?.data?.details || error.response?.data?.error || 'Analysis failed. Please try again.';
+
+            const errorMsg =
+                error.response?.data?.details ||
+                error.response?.data?.error ||
+                'Analysis failed. Please try again.';
+
             toast.error(`Error: ${errorMsg}`, { duration: 6000 });
 
-            // Notify parent to reset analyzing state
             if (onAnalysisError) {
                 onAnalysisError();
             }
-            // Reset local progress
+
             setUploadProgress(0);
         }
     }, [onAnalysisStart, onAnalysisComplete, onAnalysisError]);
@@ -93,7 +107,9 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
                             </div>
                             <div className="mt-8 space-y-2">
                                 <h3 className="text-xl font-semibold text-white">Analyzing Document...</h3>
-                                <p className="text-muted-foreground text-sm">Scanning for matches across millions of sources</p>
+                                <p className="text-muted-foreground text-sm">
+                                    Scanning for matches across millions of sources
+                                </p>
                                 <div className="w-64 h-2 bg-secondary rounded-full mt-4 overflow-hidden">
                                     <motion.div
                                         className="h-full bg-primary"
@@ -120,13 +136,17 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
                             </div>
 
                             <div className="flex items-center gap-4 text-xs text-muted-foreground/60 font-mono mt-4">
-                                <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> Secure Upload</span>
-                                <span className="flex items-center gap-1"><CheckCircle className="w-3 h-3" /> SSL Encrypted</span>
+                                <span className="flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3" /> Secure Upload
+                                </span>
+                                <span className="flex items-center gap-1">
+                                    <CheckCircle className="w-3 h-3" /> SSL Encrypted
+                                </span>
                             </div>
                         </>
                     )}
                 </div>
             </div>
         </div>
-    )
+    );
 }
