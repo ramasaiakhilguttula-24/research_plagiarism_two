@@ -6,6 +6,8 @@ import axios from 'axios'
 import { cn } from '../lib/utils'
 import toast from 'react-hot-toast'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnalysisError, isAnalyzing }) {
     const [uploadProgress, setUploadProgress] = useState(0);
 
@@ -32,7 +34,7 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
             }, 500);
 
             // Call backend
-            const response = await axios.post('http://localhost:5000/api/scan', formData, {
+            const response = await axios.post(`${API_BASE_URL}/api/scan`, formData, {
                 headers: { 'Content-Type': 'multipart/form-data' },
             });
 
