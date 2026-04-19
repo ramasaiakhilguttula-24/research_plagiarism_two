@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useEffect } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { Upload, FileText, CheckCircle, Loader2 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -11,6 +11,48 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
 export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnalysisError, isAnalyzing }) {
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [jobId, setJobId] = useState(null);
+    const [analysisMessage, setAnalysisMessage] = useState('Initializing analysis...');
+
+    // Poll for job status
+    useEffect(() => {
+        if (!jobId) return;
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await axios.get(`${API_BASE_URL}/api/status/${jobId}`);
+                const { status, progress, message, results, error } = response.data;
+
+                // Update UI with progress
+                setUploadProgress(progress || 0);
+                setAnalysisMessage(message || 'Processing...');
+
+                // Job completed
+                if (status === 'completed' && results) {
+                    clearInterval(pollInterval);
+                    setJobId(null);
+                    setTimeout(() => {
+                        onAnalysisComplete(results);
+                    }, 500);
+                }
+
+                // Job failed
+                if (status === 'failed') {
+                    clearInterval(pollInterval);
+                    setJobId(null);
+                    toast.error(`Analysis failed: ${error}`);
+                    if (onAnalysisError) {
+                        onAnalysisError();
+                    }
+                }
+            } catch (error) {
+                console.error('Status check error:', error);
+                // Continue polling even if status check fails
+            }
+        }, 2000); // Poll every 2 seconds
+
+        return () => clearInterval(pollInterval);
+    }, [jobId, onAnalysisComplete, onAnalysisError]);
 
     const onDrop = useCallback(async (acceptedFiles) => {
         const file = acceptedFiles[0];
@@ -31,15 +73,13 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
 
         onAnalysisStart();
         setUploadProgress(10);
+        setAnalysisMessage('Uploading file...');
 
         const formData = new FormData();
         formData.append('file', file);
 
         try {
-            const interval = setInterval(() => {
-                setUploadProgress(prev => Math.min(prev + 5, 90));
-            }, 500);
-
+            // Upload file
             const response = await axios.post(
                 `${API_BASE_URL}/api/scan`,
                 formData,
@@ -48,12 +88,17 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
                 }
             );
 
-            clearInterval(interval);
-            setUploadProgress(100);
+            // Get job ID from response (HTTP 202 Accepted)
+            const newJobId = response.data.jobId;
+            if (!newJobId) {
+                throw new Error('No job ID returned from server');
+            }
 
-            setTimeout(() => {
-                onAnalysisComplete(response.data);
-            }, 500);
+            setJobId(newJobId);
+            setUploadProgress(20);
+            setAnalysisMessage('Queued for analysis...');
+            
+            toast.success('File uploaded! Analyzing now...');
 
         } catch (error) {
             console.error(error);
@@ -61,7 +106,7 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
             const errorMsg =
                 error.response?.data?.details ||
                 error.response?.data?.error ||
-                'Analysis failed. Please try again.';
+                'Upload failed. Please try again.';
 
             toast.error(`Error: ${errorMsg}`, { duration: 6000 });
 
@@ -70,6 +115,7 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
             }
 
             setUploadProgress(0);
+            setJobId(null);
         }
     }, [onAnalysisStart, onAnalysisComplete, onAnalysisError]);
 
@@ -80,7 +126,7 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
             'application/pdf': ['.pdf'],
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
         },
-        disabled: isAnalyzing
+        disabled: isAnalyzing || jobId !== null
     });
 
     return (
@@ -91,13 +137,13 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
                     "relative group cursor-pointer border-2 border-dashed rounded-3xl p-12 transition-all duration-300 ease-in-out",
                     "hover:border-primary/50 hover:bg-primary/5",
                     isDragActive ? "border-primary bg-primary/10 scale-[1.02]" : "border-white/10 bg-black/20",
-                    isAnalyzing && "pointer-events-none opacity-80"
+                    (isAnalyzing || jobId) && "pointer-events-none opacity-80"
                 )}
             >
                 <input {...getInputProps()} />
 
                 <div className="flex flex-col items-center justify-center text-center space-y-6">
-                    {isAnalyzing ? (
+                    {isAnalyzing || jobId ? (
                         <div className="flex flex-col items-center animate-in fade-in zoom-in duration-300">
                             <div className="relative">
                                 <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
@@ -108,7 +154,7 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
                             <div className="mt-8 space-y-2">
                                 <h3 className="text-xl font-semibold text-white">Analyzing Document...</h3>
                                 <p className="text-muted-foreground text-sm">
-                                    Scanning for matches across millions of sources
+                                    {analysisMessage}
                                 </p>
                                 <div className="w-64 h-2 bg-secondary rounded-full mt-4 overflow-hidden">
                                     <motion.div
@@ -118,6 +164,9 @@ export default function UploadZone({ onAnalysisStart, onAnalysisComplete, onAnal
                                         transition={{ duration: 0.5 }}
                                     />
                                 </div>
+                                <p className="text-xs text-muted-foreground/60 mt-2">
+                                    {uploadProgress}% complete
+                                </p>
                             </div>
                         </div>
                     ) : (

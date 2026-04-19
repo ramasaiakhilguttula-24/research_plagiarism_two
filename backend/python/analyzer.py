@@ -278,53 +278,61 @@ def select_smart_queries(sentences, top_n=15):
         return sentences[::step][:top_n]
 
 # ============================================================================
-# OPTIMIZATION 3: Parallel processing with smart sampling
+# OPTIMIZATION 3: Parallel processing with smart sampling and progress updates
 # ============================================================================
-def check_plagiarism(text_file):
+def check_plagiarism(text_file, job_id=None):
     """
     OPTIMIZED plagiarism detection with:
-    - Parallel processing
-    - Reduced delays
+    - Parallel processing (5 workers)
+    - Reduced fingerprints (20 instead of 50)
+    - Progress updates
     - Smart sampling
     - Caching
     """
+    def send_progress(progress, message):
+        """Send progress update to stdout for job tracking"""
+        if job_id:
+            progress_data = {"progress": progress, "message": message}
+            print(f"PROGRESS:{json.dumps(progress_data)}", flush=True)
+            sys.stderr.write(f"[{job_id}] {progress}% - {message}\n")
+        else:
+            sys.stderr.write(f"{progress}% - {message}\n")
+    
     # 1. Extract Text
+    send_progress(5, "Extracting text from document...")
     text = extract_text_from_pdf(text_file)
     if not text.strip():
         return {"error": "Could not extract text or empty document."}
     
     # 2. Extract citations
+    send_progress(10, "Finding citations...")
     paper_citations = extract_citations(text)
     sys.stderr.write(f"Found {len(paper_citations)} citations in paper\n")
     
     # 3. Split into sentences
+    send_progress(15, "Splitting into sentences...")
     all_sentences = split_into_sentences(text)
-    
-    # OPTIMIZATION: Smart sampling - check every 2nd sentence for long papers
-    # OPTIMIZATION: Smart sampling with TF-IDF
-    # Instead of checking every sentence (slow! 500+ requests), we check the ~20 most unique ones.
-    # If a paper is plagiarized, the "unique" sentences usually catch it.
     
     sys.stderr.write(f"Total sentences extracted: {len(all_sentences)}\n")
     
     # 1. Filter out short/common phrases first
     valid_sentences = [s for s in all_sentences if len(s) >= 40 and not is_common_phrase(s)]
     
-    # 2. Select top "fingerprint" sentences
-    sentences = select_smart_queries(valid_sentences, top_n=50)
+    # 2. Select top "fingerprint" sentences (REDUCED from 50 to 20 for speed)
+    send_progress(20, "Selecting unique fingerprint sentences...")
+    sentences = select_smart_queries(valid_sentences, top_n=20)
     
     sys.stderr.write(f"Analyzing {len(sentences)} selected fingerprint sentences\n")
-    
-    # Filter out short and common phrases
-    # (Sentences already filtered above)
     
     results = []
     total_plagiarized_count = 0
     
-    # Configuration
-    RATE_LIMIT_DELAY = 0.8  # Reduced from 2.0 to 0.8 seconds
+    # Configuration (OPTIMIZED)
+    RATE_LIMIT_DELAY = 0.5  # Reduced from 0.8 to 0.5 seconds (less waiting between batches)
     SIMILARITY_THRESHOLD = 0.65
-    MAX_WORKERS = 3  # Process 3 sentences in parallel
+    MAX_WORKERS = 5  # INCREASED from 3 to 5 workers for more parallelism
+    
+    send_progress(25, f"Starting parallel analysis with {MAX_WORKERS} workers...")
     
     # OPTIMIZATION: Parallel processing with rate limiting
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
@@ -355,9 +363,12 @@ def check_plagiarism(text_file):
                 time.sleep(RATE_LIMIT_DELAY)
             
             # Progress indicator
-            sys.stderr.write(f"Processed {min(batch_start + batch_size, len(sentences))}/{len(sentences)} sentences\n")
+            processed = min(batch_start + batch_size, len(sentences))
+            progress_percent = 25 + int((processed / len(sentences)) * 60)
+            send_progress(progress_percent, f"Analyzed {processed}/{len(sentences)} sentences")
     
     # Calculate Overall Score
+    send_progress(90, "Calculating final plagiarism score...")
     plagiarism_score = 0
     if results:
         raw_score = (total_plagiarized_count / len(results)) * 100
@@ -375,7 +386,10 @@ def check_plagiarism(text_file):
             plagiarism_score = int(raw_score)
     
     # Enhanced AI Detection
+    send_progress(95, "Analyzing AI detection score...")
     ai_score = calculate_text_perplexity(text)
+    
+    send_progress(100, "Analysis complete!")
     
     return {
         "score": plagiarism_score,
@@ -391,13 +405,30 @@ if __name__ == "__main__":
         print(json.dumps({"error": "No file path"}))
         sys.exit(1)
     
+    # Parse command line arguments
+    file_path = sys.argv[1]
+    job_id = None
+    
+    # Check for job ID (--job-id flag)
+    if len(sys.argv) >= 4 and sys.argv[2] == '--job-id':
+        job_id = sys.argv[3]
+    
     try:
-        if not os.path.exists(sys.argv[1]):
-            raise FileNotFoundError(f"File not found: {sys.argv[1]}")
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"File not found: {file_path}")
         
-        output = check_plagiarism(sys.argv[1])
-        print(json.dumps(output))
+        output = check_plagiarism(file_path, job_id=job_id)
+        
+        # Ensure we output valid JSON on a single line for easy parsing
+        json_output = json.dumps(output)
+        print(json_output, flush=True)
         
     except Exception as e:
-        sys.stderr.write(str(e))
+        # Write error to stderr, not stdout
+        error_msg = str(e)
+        sys.stderr.write(f"ERROR: {error_msg}\n")
+        sys.stderr.flush()
+        
+        # Output error as JSON to stdout for consistency
+        print(json.dumps({"error": error_msg}), flush=True)
         sys.exit(1)
