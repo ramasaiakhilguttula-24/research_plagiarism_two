@@ -4,13 +4,13 @@
 
 ### Terminal 1 - Backend Server
 ```bash
-cd c:\Users\Akhil\OneDrive\Desktop\research_plagiarism_two\backend
+cd c:\Users\Akhil\Desktop\research_plagiarism_two\backend
 node server.js
 ```
 
 ### Terminal 2 - Frontend Dev Server
 ```bash
-cd c:\Users\Akhil\OneDrive\Desktop\research_plagiarism_two\frontend
+cd c:\Users\Akhil\Desktop\research_plagiarism_two\frontend
 npm run dev
 ```
 
@@ -23,7 +23,7 @@ Then open: **http://localhost:5173** in your browser
 ### Step 1: Install Python Dependencies
 
 ```bash
-cd c:\Users\Akhil\OneDrive\Desktop\research_plagiarism_two\backend\python
+cd c:\Users\Akhil\Desktop\research_plagiarism_two\backend\python
 pip install -r requirements.txt
 ```
 
@@ -42,7 +42,7 @@ pip install -r requirements.txt
 ### Step 2: Install Backend (Node.js) Dependencies
 
 ```bash
-cd c:\Users\Akhil\OneDrive\Desktop\research_plagiarism_two\backend
+cd c:\Users\Akhil\Desktop\research_plagiarism_two\backend
 npm install
 ```
 
@@ -59,7 +59,7 @@ npm install
 ### Step 3: Install Frontend Dependencies
 
 ```bash
-cd c:\Users\Akhil\OneDrive\Desktop\research_plagiarism_two\frontend
+cd c:\Users\Akhil\Desktop\research_plagiarism_two\frontend
 npm install
 ```
 
@@ -74,7 +74,7 @@ npm install
 ### Step 4: Start Backend Server
 
 ```bash
-cd c:\Users\Akhil\OneDrive\Desktop\research_plagiarism_two\backend
+cd c:\Users\Akhil\Desktop\research_plagiarism_two\backend
 node server.js
 ```
 
@@ -90,7 +90,7 @@ Server running on http://localhost:3000
 ### Step 5: Start Frontend Dev Server (New Terminal)
 
 ```bash
-cd c:\Users\Akhil\OneDrive\Desktop\research_plagiarism_two\frontend
+cd c:\Users\Akhil\Desktop\research_plagiarism_two\frontend
 npm run dev
 ```
 
