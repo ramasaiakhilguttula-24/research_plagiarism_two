@@ -1,0 +1,12 @@
+streamlit==1.40.2
+pandas==2.2.3
+numpy==1.26.4
+pdfplumber==0.11.2
+sentence-transformers==3.4.1
+beautifulsoup4==4.14.3
+lxml==6.0.2
+ddgs==9.10.0
+python-dotenv==1.0.1
+scikit-learn==1.6.1
+requests==2.32.3
+tf-keras==3.12.0
